@@ -59,7 +59,7 @@ let apply_substitution subst term =
 let apply_substitution_to_system subst system = 
 	let rec impl system ans = match system with
 		[] -> ans
-	  | (left, right) :: tail -> impl tail (((apply_substitution subst left), (apply_substitution subst right)) :: ans)
+	  | (left, right) :: tail -> impl tail (List.append ans (((apply_substitution subst left), (apply_substitution subst right)) :: []))
 	  
 	in impl system [];; 
 	
@@ -139,7 +139,18 @@ let solve_system system =
 			print_string (to_string_system ans);
 			(Some (get_answer (ans) []))
 		with (No_solution error) -> print_string (error ^ "\n");None;;
+
+
 		
+		
+(*		
+let sys1 = [(Fun("x",[Var "p1"]), Fun("x",[Var "p2"]));
+			(Fun("y",[Var "p2"]), Fun("y",[Var "p4"]));
+			(Fun("z",[Var "p5"]), Fun("z",[Var "p6"]))];;
+print_string (to_string_system sys1);;
+print_string "Answer:\n";;flush(stdout);;		
+let b = solve_system sys1;;
+*)
 
 (* TESTS *)
 (*
