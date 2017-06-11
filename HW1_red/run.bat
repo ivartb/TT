@@ -1,0 +1,1 @@
+ocamlc -I ../hw1/ ../hw1/hw1.ml hw1_reduction.mli hw1_reduction.ml -o t.exe && t.exe

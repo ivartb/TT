@@ -1,0 +1,1 @@
+ocamlc -I ../hw1/ ../hw1/hw1.ml -I ../hw1_red/ ../hw1_red/hw1_reduction.ml -I ../hw2_unify/ ../hw2_unify/hw2_unify.ml hw2_inference.mli hw2_inference.ml -o t.exe && t.exe
