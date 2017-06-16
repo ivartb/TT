@@ -9,4 +9,8 @@
 ### 1.3 - Lambda calculus
 * Parse and print
 
+## HW1_red - Reduction to normal form
+
 ## HW2_unify - Robinson's algorithm
+
+## HW2_infer - Algorithm W
