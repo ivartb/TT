@@ -136,9 +136,9 @@ let solve_system system =
 		
 		try 
 			let ans = robinson system String_set.empty in
-			print_string (to_string_system ans);
+			(*print_string (to_string_system ans);*)
 			(Some (get_answer (ans) []))
-		with (No_solution error) -> print_string (error ^ "\n");None;;
+		with (No_solution error) -> (*print_string (error ^ "\n");*)None;;
 
 
 		

@@ -113,9 +113,9 @@ let algorithm_w hm_lam =
 	let subst_to_subst subst1 subst2 = 
 		String_map.fold 
 			(fun a b map -> if String_map.mem a map then map else String_map.add a b map)
-			subst2
-			(String_map.fold (fun a b map -> String_map.add a (make_subst subst2 b String_set.empty) map)
-							  subst1 String_map.empty) in
+			subst1
+			(String_map.fold (fun a b map -> String_map.add a (make_subst subst1 b String_set.empty) map)
+							  subst2 String_map.empty) in
 		
 	let rec forAll_delete hmtype = match hmtype with
 		HM_ForAll(a, b) -> make_subst (String_map.add a (HM_Elem(get_new_name ())) String_map.empty)
