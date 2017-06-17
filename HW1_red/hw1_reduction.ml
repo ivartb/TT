@@ -62,9 +62,9 @@ let rec is_alpha_equivalent lam1 lam2 =
 	  
 module String_map = Map.Make(String)
 		
-let rec eqvy lam map = 
-	let cnt = ref 0 in
+let cnt = ref 0;;
 
+let rec eqvy lam map = 
 	let get_new_var () = 
 		cnt := !cnt + 1;
 		("new_var_" ^ string_of_int !cnt) in
@@ -95,47 +95,29 @@ let normal_beta_reduction lam =
 	let (yes, ans) = impl (eqvy lam String_map.empty) in
 	ans;;
 	
+let rec meet x lam = match lam with
+	Var a -> x = a
+  | App(a, b) -> (meet x a) || (meet x b)
+  | Abs(a, b) -> false;;
+	
 (* Свести выражение к нормальной форме с использованием нормального
    порядка редукции; реализация должна быть эффективной: использовать 
    мемоизацию *)
 (* lambda -> lambda *)
-let rec reduce_to_normal_form lam = 
+let rec reduce_to_normal_form lm = 
+	let lam = eqvy lm String_map.empty in
 	(*print_string ((string_of_bool (is_normal_form lam)) ^ ":	" ^ (string_of_lambda lam) ^ "\n");*)
 	if is_normal_form lam
 	then lam
-	else reduce_to_normal_form (normal_beta_reduction lam);;
-
-(*	
-let a = App(App(Var ("x"), Abs("y", Var ("6"))), Abs("x", Var ("d")));;
-print_string (string_of_lambda a);;
-if is_normal_form a
-then print_string "ok"
-else print_string "bad";;
-
-let a = App(App(Var ("x"), Abs("y", Var ("y"))), Abs("x", Var ("d")));;
-let b = App(App(Var ("x"), Abs("z", Var ("z"))), Abs("kkk", Var ("d")));;
-print_string ((string_of_lambda a) ^ " = " ^ (string_of_lambda b) ^ "\n");;
-if (is_alpha_equivalent a b)
-then print_string "ok"
-else print_string "bad";;
-*)
-
-(*let a = App(App(Abs("y", App(Var ("x"), Var ("y"))), App(Var ("5"), Var("6"))), Var ("d"));;
-print_string ((string_of_lambda a) ^ "\n");;
-print_string ((string_of_lambda (normal_beta_reduction a)) ^ "\n");;
-*)
-(*
-
-let t = App(App(Abs("x", Abs("y", Var ("x"))), Abs("x", Var ("x"))), App(Abs("x", App(Var ("x"), Var ("x"))), Abs("x", App(Var ("x"), Var ("x")))));;
-let f = App(Abs("x", App(Var ("x"), Var ("x"))), Abs("x", App(Var ("x"), Var ("x"))));;
-
-reduce_to_normal_form t;;
-
-
-let t0 = "(\\x.x x x) ((\\x.x) (\\x.x))";;
-reduce_to_normal_form (lambda_of_string t0);;
-*)
-
+	else match lam with
+			App(Abs(a, b), c) -> if meet a b
+								 then
+								 (
+									let ans = reduce_to_normal_form c in
+									reduce_to_normal_form (make_subst ans b a)
+								 )
+								 else reduce_to_normal_form (normal_beta_reduction lam)
+		  | _ -> reduce_to_normal_form (normal_beta_reduction lam);;
 
 
 
