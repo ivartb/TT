@@ -1,4 +1,4 @@
- open Hw1
+open Hw1
 (* Вернуть список имён свободных переменных *)
 (* lambda -> string list *)
 let free_vars lam = 
@@ -95,29 +95,54 @@ let normal_beta_reduction lam =
 	let (yes, ans) = impl (eqvy lam String_map.empty) in
 	ans;;
 	
-let rec meet x lam = match lam with
-	Var a -> x = a
-  | App(a, b) -> (meet x a) || (meet x b)
-  | Abs(a, b) -> false;;
+
+type lambda_ref = Varref of string ref | Absref of (string * lambda_ref) ref | Appref of (lambda_ref * lambda_ref) ref;;
+	
+let rec lambda_to_lambda_ref lam = match lam with
+	Var a -> Varref (ref a)
+  | App(a, b) -> Appref (ref (lambda_to_lambda_ref a, lambda_to_lambda_ref b))
+  | Abs(a, b) -> Absref (ref (a, lambda_to_lambda_ref b));;
+  
+let rec lambda_ref_to_lambda lamref = match lamref with
+	Varref a -> Var !a
+  | Appref a -> let (x, y) = !a in
+				App (lambda_ref_to_lambda x, lambda_ref_to_lambda y)
+  | Absref a -> let (x, y) = !a in
+				Abs (x, lambda_ref_to_lambda y);;
+				
+(* lamref[z:=thetaref] *)
+let rec subst_ref thetaref lamref z = match lamref with
+	Varref a -> if !a = z
+			  then thetaref
+			  else lamref
+  | Appref a -> let (x, y) = !a in 
+				Appref (ref (subst_ref thetaref x z, subst_ref thetaref y z))
+  | Absref a -> let (x, y) = !a in 
+				if x = z
+				then lamref
+				else Absref (ref (x, subst_ref thetaref y z));;
 	
 (* Свести выражение к нормальной форме с использованием нормального
    порядка редукции; реализация должна быть эффективной: использовать 
    мемоизацию *)
 (* lambda -> lambda *)
-let rec reduce_to_normal_form lm = 
-	let lam = eqvy lm String_map.empty in
-	(*print_string ((string_of_bool (is_normal_form lam)) ^ ":	" ^ (string_of_lambda lam) ^ "\n");*)
-	if is_normal_form lam
-	then lam
-	else match lam with
-			App(Abs(a, b), c) -> if meet a b
-								 then
-								 (
-									let ans = reduce_to_normal_form c in
-									reduce_to_normal_form (make_subst ans b a)
-								 )
-								 else reduce_to_normal_form (normal_beta_reduction lam)
-		  | _ -> reduce_to_normal_form (normal_beta_reduction lam);;
-
-
-
+let rec reduce_to_normal_form lam = 
+	let lamref = lambda_to_lambda_ref (eqvy lam String_map.empty) in
+	let rec reduce lamref = match lamref with
+		Varref a -> lamref
+	  | Appref a -> let lam = !a in 
+					(match lam with					
+						(Absref a, b) -> let (x, y) = !a in
+										 reduce (subst_ref b y x)
+					  | _ -> let (x, y) = lam in 
+							 let new_x = reduce x in
+							 (match new_x with							 
+								Absref new_a -> let (i, j) = !new_a in
+												reduce (subst_ref y j i)
+							  | _ -> a := (new_x, reduce y); lamref
+							 )
+					)
+	  | Absref a -> let (x, y) = !a in
+					a := (x, reduce y); lamref
+						
+	in lambda_ref_to_lambda (reduce lamref);;
