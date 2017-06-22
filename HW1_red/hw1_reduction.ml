@@ -63,12 +63,11 @@ let rec is_alpha_equivalent lam1 lam2 =
 module String_map = Map.Make(String)
 		
 let cnt = ref 0;;
+let get_new_var () = 
+		cnt := !cnt + 1;
+		("new_var_" ^ string_of_int !cnt);;
 
 let rec eqvy lam map = 
-	let get_new_var () = 
-		cnt := !cnt + 1;
-		("new_var_" ^ string_of_int !cnt) in
-		
 	match lam with
 		Var a -> if String_map.mem a map
 				 then Var (String_map.find a map) 
@@ -95,54 +94,62 @@ let normal_beta_reduction lam =
 	let (yes, ans) = impl (eqvy lam String_map.empty) in
 	ans;;
 	
-
-type lambda_ref = Varref of string ref | Absref of (string * lambda_ref) ref | Appref of (lambda_ref * lambda_ref) ref;;
+	
+type lambda_ref = Varref of string | Absref of (string * lambda_ref ref)| Appref of (lambda_ref ref * lambda_ref ref);;
 	
 let rec lambda_to_lambda_ref lam = match lam with
-	Var a -> Varref (ref a)
-  | App(a, b) -> Appref (ref (lambda_to_lambda_ref a, lambda_to_lambda_ref b))
-  | Abs(a, b) -> Absref (ref (a, lambda_to_lambda_ref b));;
+	Var a -> ref (Varref a)
+  | App(a, b) -> ref (Appref (lambda_to_lambda_ref a, lambda_to_lambda_ref b))
+  | Abs(a, b) -> ref (Absref (a, lambda_to_lambda_ref b));;
   
-let rec lambda_ref_to_lambda lamref = match lamref with
-	Varref a -> Var !a
-  | Appref a -> let (x, y) = !a in
-				App (lambda_ref_to_lambda x, lambda_ref_to_lambda y)
-  | Absref a -> let (x, y) = !a in
-				Abs (x, lambda_ref_to_lambda y);;
-				
+let rec lambda_ref_to_lambda lamref = match !lamref with
+	Varref a -> Var a
+  | Appref(a, b) -> App (lambda_ref_to_lambda a, lambda_ref_to_lambda b)
+  | Absref(a, b) -> Abs (a, lambda_ref_to_lambda b);;
+  
 (* lamref[z:=thetaref] *)
-let rec subst_ref thetaref lamref z = match lamref with
-	Varref a -> if !a = z
-			  then thetaref
-			  else lamref
-  | Appref a -> let (x, y) = !a in 
-				Appref (ref (subst_ref thetaref x z, subst_ref thetaref y z))
-  | Absref a -> let (x, y) = !a in 
-				if x = z
-				then lamref
-				else Absref (ref (x, subst_ref thetaref y z));;
+let rec subst_ref thetaref lamref z = match !lamref with
+	Varref a -> if a = z
+				then lamref := !thetaref
+  | Appref(a, b) -> subst_ref thetaref a z;
+					subst_ref thetaref b z
+  | Absref(a, b) -> if a <> z
+					then subst_ref thetaref b z;;
 	
+
+				
 (* Свести выражение к нормальной форме с использованием нормального
    порядка редукции; реализация должна быть эффективной: использовать 
    мемоизацию *)
 (* lambda -> lambda *)
 let rec reduce_to_normal_form lam = 
 	let lamref = lambda_to_lambda_ref (eqvy lam String_map.empty) in
-	let rec reduce lamref = match lamref with
-		Varref a -> lamref
-	  | Appref a -> let lam = !a in 
-					(match lam with					
-						(Absref a, b) -> let (x, y) = !a in
-										 reduce (subst_ref b y x)
-					  | _ -> let (x, y) = lam in 
-							 let new_x = reduce x in
-							 (match new_x with							 
-								Absref new_a -> let (i, j) = !new_a in
-												reduce (subst_ref y j i)
-							  | _ -> a := (new_x, reduce y); lamref
-							 )
-					)
-	  | Absref a -> let (x, y) = !a in
-					a := (x, reduce y); lamref
-						
-	in lambda_ref_to_lambda (reduce lamref);;
+	
+	let rec reduce lamref = match !lamref with
+		Varref a -> None
+	  | Appref(a, b) ->
+		(
+			match !a with					
+				Absref(x, y) -> let neww = get_new_var () in
+								lamref := !(lambda_to_lambda_ref (
+											eqvy (lambda_ref_to_lambda y) (String_map.singleton x neww))
+											);
+								subst_ref b lamref neww;
+								Some lamref
+				| _ -> match reduce a with
+						Some ans -> Some lamref
+					  |	None -> match reduce b	with
+									Some ans -> Some lamref
+								  | None -> None
+		)				
+	  | Absref(a, b) -> match reduce b with
+							Some ans -> Some lamref
+						  | None -> None					
+	in 
+	
+	let rec get_ans lamref = match reduce lamref with
+		Some ans -> get_ans ans
+	  |	None -> lamref
+	in
+	
+	lambda_ref_to_lambda (get_ans lamref);;
